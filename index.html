@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>나노바나나 번역기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* Layout: one column, phone first. Key → picture → options → make → result and follow-up edits. */
+:root {
+  --paper: #F4F4EF;
+  --surface: #FFFFFF;
+  --ink: #17191C;
+  --muted: #5C6168;
+  --line: #DADBD3;
+  --banana: #F1CF3B;
+  --banana-wash: rgba(241, 207, 59, 0.38);
+  --btn: #17191C;
+  --btn-ink: #FFFFFF;
+  --warn: #9A4A06;
+  --ok: #2F6B2F;
+  --f-display: "Black Han Sans", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+  --f-body: "Noto Sans KR", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --r: 10px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #121310; --surface: #1C1D19; --ink: #ECECE6; --muted: #A2A49B; --line: #30322B;
+    --banana: #F1CF3B; --banana-wash: rgba(241, 207, 59, 0.22); --btn: #F1CF3B; --btn-ink: #17191C;
+    --warn: #F2A65A; --ok: #8BC48B;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 760px; margin: 0 auto; padding-inline: 16px; padding-block: calc(env(safe-area-inset-top, 0px) + 18px) calc(env(safe-area-inset-bottom, 0px) + 40px); display: flex; flex-direction: column; gap: 16px; }
+
+header { display: flex; flex-direction: column; gap: 4px; }
+h1 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: 34px; line-height: 1.05; text-wrap: balance; }
+h1 .mark { background: linear-gradient(transparent 55%, var(--banana-wash) 55%); padding-inline: 2px; }
+header p { margin: 0; color: var(--muted); font-size: 14px; max-width: 52ch; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+details.panel > summary { cursor: pointer; font-weight: 700; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+details.panel > summary::-webkit-details-marker { display: none; }
+details.panel > summary .state { font-weight: 500; font-size: 13px; color: var(--muted); }
+details.panel > summary .state.ok { color: var(--ok); }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row > input[type="password"], .row > input[type="text"] { flex: 1 1 220px; min-width: 0; }
+input[type="password"], input[type="text"], select, textarea {
+  font: 15px/1.45 var(--f-body); color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line); border-radius: 8px; padding: 10px 11px; width: 100%; min-width: 0;
+}
+select { appearance: auto; }
+textarea { resize: vertical; }
+label.lbl, .lbl { font-size: 12.5px; color: var(--muted); font-weight: 500; letter-spacing: 0.02em; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.hint { margin: 0; font-size: 12.5px; color: var(--muted); }
+.hint a { color: inherit; }
+.check { display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; color: var(--muted); cursor: pointer; }
+.check input { width: 17px; height: 17px; margin: 0; accent-color: var(--ink); }
+
+.seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); align-self: flex-start; }
+.seg button { appearance: none; border: 0; background: transparent; color: var(--muted); font: 500 13.5px var(--f-body); padding: 6px 13px; border-radius: 999px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+
+.stage { position: relative; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); min-height: 260px; display: flex; align-items: center; justify-content: center; padding: 14px; }
+.stage.drop { outline: 2.5px dashed var(--banana); outline-offset: -7px; }
+.stage img { display: block; max-width: 100%; height: auto; max-height: 72vh; border-radius: 3px; box-shadow: 0 6px 22px rgba(0, 0, 0, 0.10); background: #fff; }
+.empty { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; color: var(--muted); padding: 24px 8px; }
+.empty strong { color: var(--ink); font-size: 16px; }
+.tag { position: absolute; top: 10px; left: 10px; padding: 2px 9px; border-radius: 999px; background: var(--ink); color: var(--paper); font-size: 12px; font-weight: 700; line-height: 1.6; }
+.busy { position: absolute; inset: 0; border-radius: var(--r); background: color-mix(in srgb, var(--surface) 84%, transparent); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 20px; }
+.busy .sub { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.spin { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--banana); animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation-duration: 3s; } }
+
+.viewbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.btn { appearance: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 18px; border-radius: var(--r); font: 700 15.5px var(--f-body); cursor: pointer; border: 1px solid transparent; text-align: center; text-decoration: none; }
+.btn.primary { background: var(--btn); color: var(--btn-ink); }
+.btn.ghost { background: var(--surface); color: var(--ink); border-color: var(--line); }
+.btn.small { min-height: 38px; font-size: 14px; padding: 0 14px; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:focus-visible, .seg button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible, .pick:focus-within { outline: 2.5px solid var(--banana); outline-offset: 2px; }
+.pick { position: relative; overflow: hidden; }
+.pick input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 100px; }
+.actions { display: grid; grid-template-columns: 1fr 1.5fr; gap: 10px; }
+.status { margin: 0; min-height: 1.5em; font-size: 13.5px; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+.status.warn { color: var(--warn); }
+.status.ok { color: var(--ok); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 520px) { .grid2 { grid-template-columns: 1fr; } }
+
+.history { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.history button { flex: none; width: 64px; height: 64px; padding: 0; border: 2px solid transparent; border-radius: 8px; overflow: hidden; background: var(--paper); cursor: pointer; }
+.history button[aria-current="true"] { border-color: var(--banana); }
+.history img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.modeltext { font-size: 13.5px; color: var(--muted); background: var(--paper); border-radius: 8px; padding: 10px 12px; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.foot { color: var(--muted); font-size: 12.5px; margin: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="mark">나노바나나</span> 번역기</h1>
+    <p>사진 속 외국어를 한국어로 바꿔 다시 그려요. 구글 나노바나나가 말풍선 안 글자와 배경까지 같이 고쳐요.</p>
+  </header>
+
+  <details class="panel" id="keyPanel" open>
+    <summary>Gemini API 키 <span class="state" id="keyState">필요해요</span></summary>
+    <div class="row">
+      <input type="password" id="key" autocomplete="off" spellcheck="false" placeholder="AIza로 시작하는 키">
+      <button class="btn ghost small" type="button" id="keyShow">보기</button>
+    </div>
+    <label class="check" for="keyRemember"><input type="checkbox" id="keyRemember"> 이 기기에 기억하기</label>
+    <p class="hint">키는 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>에서 만들어요. 키는 이 기기의 브라우저에만 저장되고, 구글 서버 말고는 어디로도 보내지 않아요. 요금이 걱정되면 Google Cloud 결제 설정에서 예산 알림을 걸어 두세요.</p>
+  </details>
+
+  <section class="stage" id="stage" aria-label="이미지">
+    <div class="empty" id="empty">
+      <strong>번역할 사진을 골라 주세요</strong>
+      <span>만화, 프로필 카드, 스크린샷 모두 돼요. 이미지를 복사했다면 이 페이지에서 붙여넣어도 돼요.</span>
+    </div>
+    <img id="view" alt="미리보기" hidden>
+    <span class="tag" id="viewTag" hidden></span>
+    <div class="busy" id="busy" hidden>
+      <div class="spin" aria-hidden="true"></div>
+      <strong id="busyMsg">나노바나나가 그리는 중</strong>
+      <span class="sub" id="busySub">보통 20초~1분 걸려요</span>
+      <button class="btn ghost small" type="button" id="stop">멈추기</button>
+    </div>
+  </section>
+
+  <div class="viewbar">
+    <div class="seg" role="group" aria-label="보기" id="viewSeg">
+      <button type="button" data-v="result" aria-pressed="true">결과</button>
+      <button type="button" data-v="orig" aria-pressed="false">원본</button>
+    </div>
+    <div class="row">
+      <button class="btn ghost small" type="button" id="save" disabled>결과 저장</button>
+    </div>
+  </div>
+
+  <div class="actions">
+    <div class="btn ghost pick"><span aria-hidden="true">사진 고르기</span><input type="file" id="file" accept="image/*" aria-label="사진 고르기"></div>
+    <button class="btn primary" type="button" id="go" disabled>번역 이미지 만들기</button>
+  </div>
+  <p class="status" id="status" role="status" aria-live="polite"></p>
+
+  <div class="panel" id="historyPanel" hidden>
+    <span class="lbl">이번에 만든 결과 (눌러서 비교)</span>
+    <div class="history" id="history"></div>
+    <p class="modeltext" id="modelText" hidden></p>
+    <div class="field">
+      <label class="lbl" for="fix">결과에서 이어서 고치기</label>
+      <textarea id="fix" rows="2" placeholder="예: 오른쪽 위 말풍선 글자를 더 크게 / '쇼타'를 '쇼우타'로 바꿔 줘"></textarea>
+      <button class="btn ghost" type="button" id="fixGo">지금 결과에 적용</button>
+    </div>
+  </div>
+
+  <details class="panel" id="optPanel" open>
+    <summary>번역 설정</summary>
+    <div class="grid2">
+      <div class="field">
+        <label class="lbl" for="model">모델</label>
+        <select id="model">
+          <option value="gemini-nano-banana-2.1">Nano Banana 2.1 (추천)</option>
+          <option value="gemini-3-pro-image">Nano Banana Pro (현지화에 강함, 비쌈)</option>
+          <option value="gemini-3.1-flash-image">Nano Banana 2</option>
+          <option value="gemini-3.1-flash-lite-image">Nano Banana 2 Lite (빠름, 1K만)</option>
+          <option value="gemini-2.5-flash-image">Nano Banana (구버전)</option>
+          <option value="custom">직접 입력</option>
+        </select>
+        <input type="text" id="modelCustom" placeholder="모델 ID" spellcheck="false" hidden>
+      </div>
+      <div class="field">
+        <span class="lbl">결과 크기</span>
+        <div class="seg" role="group" aria-label="결과 크기" data-key="size">
+          <button type="button" data-v="1K">1K</button>
+          <button type="button" data-v="2K">2K</button>
+          <button type="button" data-v="4K">4K</button>
+        </div>
+        <p class="hint">작은 글자가 많으면 2K 이상이 잘 읽혀요. 클수록 비싸요.</p>
+      </div>
+      <div class="field">
+        <span class="lbl">원문 언어</span>
+        <div class="seg" role="group" aria-label="원문 언어" data-key="lang">
+          <button type="button" data-v="auto">자동</button>
+          <button type="button" data-v="ja">일본어</button>
+          <button type="button" data-v="en">영어</button>
+          <button type="button" data-v="zh">중국어</button>
+        </div>
+      </div>
+      <div class="field">
+        <span class="lbl">효과음</span>
+        <div class="seg" role="group" aria-label="효과음" data-key="sfx">
+          <button type="button" data-v="replace">한국어로 바꾸기</button>
+          <button type="button" data-v="keep">원문 두고 작게 달기</button>
+        </div>
+      </div>
+      <div class="field">
+        <span class="lbl">생각 수준</span>
+        <div class="seg" role="group" aria-label="생각 수준" data-key="think">
+          <button type="button" data-v="default">기본</button>
+          <button type="button" data-v="high">높게</button>
+        </div>
+        <p class="hint">높게는 느리지만 글자 배치가 꼼꼼해져요. 구버전 모델은 무시해요.</p>
+      </div>
+    </div>
+    <div class="field">
+      <label class="lbl" for="lines">정해진 번역 (선택)</label>
+      <textarea id="lines" rows="4" placeholder="원문 → 번역 형식으로 한 줄에 하나씩&#10;なんでないの？ → 왜 없는 거야?&#10;どっちも!! → 둘 다!!"></textarea>
+      <p class="hint">식자 번역기에서 다듬은 번역을 붙여넣으면, 나노바나나는 그 문장을 그대로 그리기만 해요.</p>
+    </div>
+    <div class="field">
+      <label class="lbl" for="gloss">이름 사전 · 번역 지침</label>
+      <textarea id="gloss" rows="3" placeholder="中島卓也=나카시마 타쿠야&#10;간사이 사투리는 경상도 사투리 느낌으로"></textarea>
+    </div>
+  </details>
+
+  <p class="foot">이 파일은 서버 없이 브라우저에서만 돌아가요. 사진과 키는 구글 Gemini API로만 보내요.</p>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const API = "https://generativelanguage.googleapis.com/v1beta";
+const LANGS = { auto: "every piece of text that is not Korean", ja: "every piece of Japanese text", en: "every piece of English text", zh: "every piece of Chinese text" };
+
+const S = {
+  orig: null,          // {data, mime, url}
+  results: [],         // [{url, data, mime}]
+  current: -1,
+  view: "result",
+  ctl: null,
+  set: { size: "2K", lang: "auto", sfx: "replace", think: "default", model: "gemini-nano-banana-2.1", modelCustom: "", lines: "", gloss: "" },
+};
+
+// ---------- storage ----------
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+  del(k) { try { localStorage.removeItem(k); } catch (e) {} },
+};
+function saveSettings() { store.set("banana.settings", JSON.stringify(S.set)); }
+function loadSettings() {
+  try { Object.assign(S.set, JSON.parse(store.get("banana.settings") || "{}")); } catch (e) {}
+  $("model").value = S.set.model;
+  if ($("model").value !== S.set.model) $("model").value = "gemini-nano-banana-2.1";
+  $("modelCustom").value = S.set.modelCustom || "";
+  $("modelCustom").hidden = $("model").value !== "custom";
+  $("lines").value = S.set.lines || "";
+  $("gloss").value = S.set.gloss || "";
+  document.querySelectorAll(".seg[data-key]").forEach((g) => {
+    const key = g.dataset.key;
+    const btns = g.querySelectorAll("button");
+    btns.forEach((b) => {
+      b.setAttribute("aria-pressed", String(b.dataset.v === S.set[key]));
+      b.addEventListener("click", () => {
+        S.set[key] = b.dataset.v;
+        btns.forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+        saveSettings();
+      });
+    });
+  });
+  $("model").addEventListener("change", () => { S.set.model = $("model").value; $("modelCustom").hidden = S.set.model !== "custom"; saveSettings(); });
+  ["modelCustom", "lines", "gloss"].forEach((id) => $(id).addEventListener("input", () => { S.set[id] = $(id).value; saveSettings(); }));
+}
+
+// ---------- key ----------
+function keyValue() { return $("key").value.trim(); }
+function refreshKey() {
+  const ok = keyValue().length > 20;
+  $("keyState").textContent = ok ? "입력됨" : "필요해요";
+  $("keyState").classList.toggle("ok", ok);
+  $("go").disabled = !(ok && S.orig) || !!S.ctl;
+  if ($("keyRemember").checked && ok) store.set("banana.key", keyValue());
+}
+$("key").addEventListener("input", refreshKey);
+$("keyRemember").addEventListener("change", () => {
+  if ($("keyRemember").checked) { if (keyValue()) store.set("banana.key", keyValue()); }
+  else store.del("banana.key");
+});
+$("keyShow").addEventListener("click", () => {
+  const t = $("key").type === "password" ? "text" : "password";
+  $("key").type = t; $("keyShow").textContent = t === "password" ? "보기" : "숨기기";
+});
+
+// ---------- images ----------
+function blobToBase64(blob) {
+  return new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => res(String(fr.result).split(",")[1]);
+    fr.onerror = rej;
+    fr.readAsDataURL(blob);
+  });
+}
+function b64ToBlob(b64, mime) {
+  const bin = atob(b64);
+  const u = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  return new Blob([u], { type: mime });
+}
+function sniffMime(b64) {
+  if (b64.startsWith("iVBOR")) return "image/png";
+  if (b64.startsWith("/9j/")) return "image/jpeg";
+  if (b64.startsWith("UklGR")) return "image/webp";
+  return "image/png";
+}
+
+async function prepareImage(blob) {
+  const url = URL.createObjectURL(blob);
+  const img = new Image();
+  try {
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+  } finally { URL.revokeObjectURL(url); }
+  const k = Math.min(1, 2048 / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = document.createElement("canvas");
+  c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+  const x = c.getContext("2d");
+  x.fillStyle = "#fff"; x.fillRect(0, 0, c.width, c.height);
+  x.drawImage(img, 0, 0, c.width, c.height);
+  const out = await new Promise((res) => c.toBlob(res, "image/jpeg", 0.92));
+  return { data: await blobToBase64(out), mime: "image/jpeg", url: URL.createObjectURL(out), w: c.width, h: c.height };
+}
+
+async function loadPicture(blob) {
+  if (!blob) return;
+  try {
+    S.orig = await prepareImage(blob);
+  } catch (e) {
+    setStatus("이 사진을 열지 못했어요. JPG나 PNG로 다시 골라 주세요.", "warn");
+    return;
+  }
+  S.results.forEach((r) => URL.revokeObjectURL(r.url));
+  S.results = []; S.current = -1; S.view = "orig";
+  renderHistory(); showView();
+  $("modelText").hidden = true;
+  refreshKey();
+  setStatus(keyValue() ? "사진을 불러왔어요. 번역 이미지 만들기를 눌러 주세요." : "사진을 불러왔어요. 위에 API 키를 넣으면 시작할 수 있어요.");
+}
+
+function showView() {
+  const res = S.results[S.current];
+  const showRes = S.view === "result" && res;
+  const url = showRes ? res.url : S.orig && S.orig.url;
+  $("empty").hidden = !!url;
+  $("view").hidden = !url;
+  if (url) $("view").src = url;
+  $("viewTag").hidden = !url;
+  $("viewTag").textContent = showRes ? `결과 ${S.current + 1}` : "원본";
+  document.querySelectorAll("#viewSeg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === (showRes ? "result" : "orig"))));
+  $("save").disabled = !res;
+}
+document.querySelectorAll("#viewSeg button").forEach((b) => b.addEventListener("click", () => { S.view = b.dataset.v; showView(); }));
+
+function renderHistory() {
+  const h = $("history");
+  h.textContent = "";
+  $("historyPanel").hidden = !S.results.length;
+  S.results.forEach((r, i) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("aria-label", `결과 ${i + 1}`);
+    b.setAttribute("aria-current", String(i === S.current));
+    const im = document.createElement("img");
+    im.src = r.url; im.alt = "";
+    b.appendChild(im);
+    b.addEventListener("click", () => { S.current = i; S.view = "result"; renderHistory(); showView(); });
+    h.appendChild(b);
+  });
+}
+
+// ---------- picking, pasting, dropping ----------
+$("file").addEventListener("change", (e) => { loadPicture(e.target.files && e.target.files[0]); e.target.value = ""; });
+function imageFromTransfer(dt) {
+  if (!dt) return null;
+  for (const f of dt.files || []) if (/^image\//.test(f.type)) return f;
+  for (const it of dt.items || []) if (it.kind === "file" && /^image\//.test(it.type)) return it.getAsFile();
+  return null;
+}
+document.addEventListener("paste", (e) => {
+  const f = imageFromTransfer(e.clipboardData);
+  if (f) { e.preventDefault(); loadPicture(f); }
+});
+const stage = $("stage");
+["dragenter", "dragover"].forEach((t) => stage.addEventListener(t, (e) => { e.preventDefault(); stage.classList.add("drop"); }));
+["dragleave", "drop"].forEach((t) => stage.addEventListener(t, () => stage.classList.remove("drop")));
+stage.addEventListener("drop", (e) => { e.preventDefault(); loadPicture(imageFromTransfer(e.dataTransfer)); });
+
+// ---------- prompts ----------
+function translatePrompt() {
+  const s = S.set;
+  const lines = (s.lines || "").trim().slice(0, 4000);
+  const gloss = (s.gloss || "").trim().slice(0, 3000);
+  const sfx = s.sfx === "keep"
+    ? "Sound effects drawn as part of the art: keep the original sound effect and add a small Korean translation next to it."
+    : "Sound effects drawn as part of the art: replace them with Korean sound effects in a matching hand-drawn style, size and angle.";
+  return [
+    `Edit this image: replace ${LANGS[s.lang] || LANGS.auto} with its Korean translation, typeset in place the way a professional manga scanlation typesetter would.`,
+    "",
+    "- Read the whole image first and translate naturally for its context. Dialogue should sound like natural spoken Korean.",
+    "- Put each translation exactly where its original was, inside the same speech bubble, caption box or form field. Match the original's color and weight, and make it as large as fits while staying inside the container. Vertical Japanese may become horizontal Korean when that reads better.",
+    "- Remove the original text completely and restore what was behind it (white bubble, screentone, artwork).",
+    "- Change nothing else. Keep the drawings, faces, panel borders, layout, colors and image proportions exactly the same.",
+    "- Write Hangul correctly. Check every syllable; never invent characters.",
+    `- ${sfx}`,
+    "- Leave logos, numbers and English words Korean readers understand as they are.",
+    lines ? `\nUse exactly these translations (original → Korean). Copy the Korean character for character:\n${lines}` : "",
+    gloss ? `\nNames and instructions from the reader. Follow them exactly:\n${gloss}` : "",
+  ].join("\n").trim();
+}
+function fixPrompt(req) {
+  return `This image is a Korean translation of a comic or picture. Make only this change and keep everything else exactly the same, including all other text and the artwork: ${req}\nWrite Hangul correctly; check every syllable.`;
+}
+
+// ---------- calling Gemini ----------
+function modelId() {
+  const m = S.set.model === "custom" ? (S.set.modelCustom || "").trim() : S.set.model;
+  return m.replace(/^models\//, "");
+}
+
+async function post(url, body, signal) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": keyValue() },
+    body: JSON.stringify(body),
+    signal,
+  });
+  let json = null;
+  try { json = await res.json(); } catch (e) {}
+  return { ok: res.ok, status: res.status, json };
+}
+
+function errMessage(r) {
+  const e = r.json && (r.json.error || (Array.isArray(r.json) && r.json[0] && r.json[0].error));
+  return (e && e.message) || (r.json && r.json.errors && r.json.errors[0] && r.json.errors[0].message) || "";
+}
+
+// The Interactions API is current; generateContent is the older shape some models and keys still use.
+async function generate(prompt, image, signal) {
+  const model = modelId();
+  if (!model) throw { friendly: "모델 ID를 입력해 주세요." };
+  const lite = /lite/.test(model);
+  const legacyModel = /2\.5-flash-image/.test(model);
+  const input = [
+    { type: "text", text: prompt },
+    { type: "image", mime_type: image.mime, data: image.data },
+  ];
+  const full = { model, input, store: false, response_format: { type: "image", image_size: lite ? "1K" : S.set.size } };
+  if (S.set.think === "high" && !legacyModel) full.generation_config = { thinking_level: "high" };
+  const tries = [
+    () => post(`${API}/interactions`, full, signal),
+    () => post(`${API}/interactions`, { model, input }, signal),
+    () => post(`${API}/models/${encodeURIComponent(model)}:generateContent`, {
+      contents: [{ role: "user", parts: [{ text: prompt }, { inline_data: { mime_type: image.mime, data: image.data } }] }],
+      generationConfig: Object.assign({ responseModalities: ["TEXT", "IMAGE"] }, legacyModel || lite ? {} : { imageConfig: { imageSize: S.set.size } }),
+    }, signal),
+  ];
+  let last = null;
+  for (let i = 0; i < tries.length; i++) {
+    const r = await tries[i]();
+    if (r.ok) {
+      if (r.json && r.json.status === "failed") throw { friendly: "생성에 실패했어요.", detail: errMessage(r) };
+      return r.json;
+    }
+    last = r;
+    // Retry only when the request shape was refused (400) or the route is unknown (404); keys, quota and safety errors stop here.
+    if (r.status !== 400 && r.status !== 404) break;
+    if (r.status === 400 && /api key|API_KEY/i.test(errMessage(r))) break;
+  }
+  throw httpError(last);
+}
+
+function httpError(r) {
+  const msg = errMessage(r);
+  const s = r ? r.status : 0;
+  let friendly = "요청이 실패했어요.";
+  if (s === 400 && /api key|API_KEY/i.test(msg)) friendly = "API 키가 올바르지 않아요. AI Studio에서 키를 다시 복사해 주세요.";
+  else if (s === 400) friendly = "요청 형식이 받아들여지지 않았어요. 다른 모델을 골라 보세요.";
+  else if (s === 401 || s === 403) friendly = "이 키로는 이 모델을 쓸 권한이 없어요. 결제 설정이나 모델 접근 권한을 확인해 주세요.";
+  else if (s === 404) friendly = "모델을 찾지 못했어요. 다른 모델을 고르거나 직접 입력해 주세요.";
+  else if (s === 429) friendly = "사용 한도에 닿았어요. 잠시 후 다시 하거나 결제 한도를 확인해 주세요.";
+  else if (s >= 500) friendly = "구글 서버가 응답하지 않았어요. 잠시 후 다시 눌러 주세요.";
+  return { friendly, detail: msg };
+}
+
+function pickImage(json) {
+  if (!json) return null;
+  if (json.output_image && json.output_image.data) return { data: json.output_image.data, mime: json.output_image.mime_type };
+  let found = null;
+  for (const st of json.steps || []) {
+    if (!st || /thought/.test(st.type || "")) continue;
+    for (const c of st.content || []) if (c && c.type === "image" && c.data) found = { data: c.data, mime: c.mime_type };
+  }
+  if (found) return found;
+  for (const cand of json.candidates || []) {
+    for (const p of (cand.content && cand.content.parts) || []) {
+      if (p.thought) continue;
+      const d = p.inlineData || p.inline_data;
+      if (d && d.data) found = { data: d.data, mime: d.mimeType || d.mime_type };
+    }
+  }
+  if (found) return found;
+  const walk = (o) => {
+    if (!o || typeof o !== "object" || /thought/.test(o.type || "")) return;
+    if (o.type === "image" && typeof o.data === "string" && o.data.length > 100) found = { data: o.data, mime: o.mime_type };
+    for (const v of Object.values(o)) if (typeof v === "object") walk(v);
+  };
+  walk(json);
+  return found;
+}
+
+function pickText(json) {
+  if (!json) return "";
+  if (typeof json.output_text === "string") return json.output_text;
+  const out = [];
+  for (const st of json.steps || []) {
+    if (!st || st.type !== "model_output") continue;
+    for (const c of st.content || []) if (c && c.type === "text" && c.text) out.push(c.text);
+  }
+  for (const cand of json.candidates || []) for (const p of (cand.content && cand.content.parts) || []) if (!p.thought && p.text) out.push(p.text);
+  return out.join("\n").trim();
+}
+
+function setStatus(msg, kind) {
+  const s = $("status");
+  s.textContent = msg || "";
+  s.classList.toggle("warn", kind === "warn");
+  s.classList.toggle("ok", kind === "ok");
+}
+
+let tick = 0;
+async function run(prompt, image, label) {
+  if (!keyValue()) { setStatus("위에 Gemini API 키를 먼저 넣어 주세요.", "warn"); $("keyPanel").open = true; return; }
+  S.ctl = new AbortController();
+  $("busy").hidden = false; $("go").disabled = true; $("fixGo").disabled = true; $("file").disabled = true;
+  $("busyMsg").textContent = label;
+  const t0 = Date.now();
+  $("busySub").textContent = "보통 20초~1분 걸려요";
+  clearInterval(tick);
+  tick = setInterval(() => { $("busySub").textContent = `${Math.round((Date.now() - t0) / 1000)}초 지남 · 보통 20초~1분 걸려요`; }, 1000);
+  try {
+    const json = await generate(prompt, image, S.ctl.signal);
+    const img = pickImage(json);
+    const text = pickText(json);
+    $("modelText").hidden = !text;
+    $("modelText").textContent = text ? `모델의 메모: ${text}` : "";
+    if (!img) {
+      setStatus(text ? "이미지 대신 글만 돌아왔어요. 아래 메모를 확인하고 다시 눌러 보세요." : "이미지가 돌아오지 않았어요. 다시 누르거나 다른 모델을 골라 보세요.", "warn");
+      if (text) $("historyPanel").hidden = false;
+      return;
+    }
+    const mime = img.mime || sniffMime(img.data);
+    const url = URL.createObjectURL(b64ToBlob(img.data, mime));
+    S.results.push({ url, data: img.data, mime });
+    if (S.results.length > 8) URL.revokeObjectURL(S.results.shift().url);
+    S.current = S.results.length - 1; S.view = "result";
+    renderHistory(); showView();
+    setStatus(`다 됐어요 (${Math.round((Date.now() - t0) / 1000)}초). 원본과 비교하고, 틀린 곳은 아래에서 이어서 고칠 수 있어요.`, "ok");
+  } catch (e) {
+    if (e && e.name === "AbortError") setStatus("멈췄어요.");
+    else if (e && e.friendly) setStatus(e.friendly + (e.detail ? `\n(${e.detail.slice(0, 220)})` : ""), "warn");
+    else setStatus("연결하지 못했어요. 인터넷 연결을 확인하거나, 이 파일을 웹 주소(https)로 열어 주세요.", "warn");
+  } finally {
+    clearInterval(tick);
+    $("busy").hidden = true; $("file").disabled = false; $("fixGo").disabled = false;
+    S.ctl = null;
+    refreshKey();
+  }
+}
+
+$("go").addEventListener("click", () => { if (S.orig) run(translatePrompt(), S.orig, "나노바나나가 그리는 중"); });
+$("fixGo").addEventListener("click", () => {
+  const req = $("fix").value.trim();
+  const cur = S.results[S.current];
+  if (!req) { setStatus("무엇을 고칠지 적어 주세요.", "warn"); $("fix").focus(); return; }
+  if (!cur) return;
+  run(fixPrompt(req), { data: cur.data, mime: cur.mime }, "결과를 고치는 중");
+});
+$("stop").addEventListener("click", () => S.ctl && S.ctl.abort());
+
+$("save").addEventListener("click", () => {
+  const cur = S.results[S.current];
+  if (!cur) return;
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, "0");
+  const ext = cur.mime === "image/jpeg" ? "jpg" : cur.mime === "image/webp" ? "webp" : "png";
+  const a = document.createElement("a");
+  a.href = cur.url;
+  a.download = `번역_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.${ext}`;
+  document.body.appendChild(a); a.click(); a.remove();
+});
+
+// ---------- start ----------
+loadSettings();
+const savedKey = store.get("banana.key");
+if (savedKey) { $("key").value = savedKey; $("keyRemember").checked = true; $("keyPanel").open = false; }
+refreshKey();
+showView();
+if (location.protocol === "file:") setStatus("파일로 열었어요. 번역이 연결 오류로 실패하면 GitHub Pages 같은 웹 주소로 올려서 열어 주세요.");
+</script>
+</body>
+</html>
